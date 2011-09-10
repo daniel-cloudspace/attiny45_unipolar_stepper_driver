@@ -1,22 +1,32 @@
-#include <avr/interrupt.h>
+// in reference to the pdf http://www.atmel.com/dyn/resources/prod_documents/doc2586.pdf
+//
+// Output pins:
+//   5, 6, 2, 3
+//
+// Interrupt pin:
+//   7 (INT0)
+// 
+// Direction (input) pin:
+//   1
 
-int motorPins[] = {8, 9, 10, 11};
-int directionPin = 0;
-int count = 0;
-int count2 = 0;
-int delayTime = 500;
-int val = 0;
+int motorPins[] = { 1, 0, 4, 3 };
+int states[][4] = {
+  { HIGH, HIGH, LOW, LOW },
+  { LOW, HIGH, HIGH, LOW },
+  { LOW, LOW, HIGH, HIGH },
+  { HIGH, LOW, LOW, HIGH } 
+};
+volatile int count = 0;
+int delayTime = 20;
+
+int count2; 
 
 void setup() {
   for (count = 0; count < 4; count++) {
     pinMode(motorPins[count], OUTPUT);
   }
   
-  pinMode(directionPin, INPUT);
-  
-  PCMSK |= (1<<PIND2);             // Set Pin 6 (PD2) as the pin to use for this example
-  MCUCR = (1<<ISC01) | (1<<ISC00); // interrupt on INT0 pin falling edge (sensor triggered) 
-  GIMSK  |= (1<<INT0);             // turn on interrupts!
+  attachInterrupt(0, pulseTrain, RISING);
 }
 
 void moveForward() {
@@ -27,6 +37,7 @@ void moveForward() {
   for (count = 3; count >= 0; count--) {
     digitalWrite(motorPins[count], count2>>count&0x01);
   }
+  delay(delayTime);
 }
 
 void moveBackward() {
@@ -37,14 +48,18 @@ void moveBackward() {
   for (count = 3; count >= 0; count--) {
     digitalWrite(motorPins[3 - count], count2>>count&0x01);
   }
+  delay(delayTime);
 }
 
 void loop() {
-
+  //moveForward();
 }
 
-
-SIGNAL (SIG_INT0) {
-  digitalRead(directionPin) ? moveForward() : moveBackward();
+void pulseTrain() {
+  digitalWrite(motorPins[0], states[count][0]);
+  digitalWrite(motorPins[1], states[count][1]);
+  digitalWrite(motorPins[2], states[count][2]);
+  digitalWrite(motorPins[3], states[count][3]);
+  
+  count = (count + (digitalRead(5) ? 3 : 1)) % 4;
 }
-
